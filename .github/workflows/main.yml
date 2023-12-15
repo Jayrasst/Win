@@ -1,27 +1,30 @@
-name: CI
+# Use the official Ubuntu 20.04 LTS as the base image
+FROM ubuntu:20.04
 
-on: [push, workflow_dispatch]
+# Set the maintainer label
+LABEL maintainer="Your Name <your_email@example.com>"
 
-jobs:
-  build:
+# Set environment variables for configuration
+ENV NGROK_VERSION 2.3.40
+ENV NGROK_AUTH_TOKEN your_auth_token
 
-    runs-on: windows-latest
-    timeout-minutes: 9999
-    
+# Update the package lists and install necessary packages
+RUN apt-get update && \
+    apt-get install -y wget xvfb xrdp
 
-    steps:
-    - name: Download
-      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-    - name: Extract
-      run: Expand-Archive ngrok.zip
-    - name: Auth
-      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-    - name: Enable TS
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
-    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-    - name: Create Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389
+# Download and install ngrok
+RUN wget https://bin.equinox.io/c/${NGROK_AUTH_TOKEN}/ngrok-stable-linux-amd64.zip && \
+    unzip ngrok-stable-linux-amd64.zip -d /usr/local/bin && \
+    rm ngrok-stable-linux-amd64.zip
+
+# Copy the xrdp configuration file to the correct location
+COPY xrdp.ini /etc/xrdp/xrdp.ini
+
+# Expose the RDP port
+EXPOSE 3389
+
+# Set the entrypoint command to start the xrdp service
+ENTRYPOINT ["xrdp", "--nodaemon"]
+
+# Add a comment to document the purpose of this Dockerfile
+# This Dockerfile sets up an Ubuntu-based RDP server with ngrok for remote access
