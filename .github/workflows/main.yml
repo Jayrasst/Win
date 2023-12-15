@@ -1,30 +1,38 @@
-# Use the official Ubuntu 20.04 LTS as the base image
-FROM ubuntu:20.04
+# Use the official Ubuntu base image
+FROM ubuntu:latest
 
 # Set the maintainer label
-LABEL maintainer="Your Name <your_email@example.com>"
+LABEL maintainer="Your Name <jayyrasst@gmail.com>"
 
 # Set environment variables for configuration
-ENV NGROK_VERSION 2.3.40
-ENV NGROK_AUTH_TOKEN your_auth_token
+ENV USERNAME=myuser
+ENV PASSWORD=mypassword
 
 # Update the package lists and install necessary packages
 RUN apt-get update && \
-    apt-get install -y wget xvfb xrdp
+    apt-get install -y \
+    ubuntu-desktop \
+    tightvncserver \
+    xfce4 \
+    xfce4-goodies \
+    firefox \
+    sudo \
+    wget \
+    curl \
+    git \
+    nano
 
-# Download and install ngrok
-RUN wget https://bin.equinox.io/c/${NGROK_AUTH_TOKEN}/ngrok-stable-linux-amd64.zip && \
-    unzip ngrok-stable-linux-amd64.zip -d /usr/local/bin && \
-    rm ngrok-stable-linux-amd64.zip
+# Set the VNC password
+RUN echo $PASSWORD | vncpasswd -f > /root/.vnc/passwd && \
+    chmod 600 /root/.vnc/passwd
 
-# Copy the xrdp configuration file to the correct location
-COPY xrdp.ini /etc/xrdp/xrdp.ini
+# Create a startup script
+RUN echo "#!/bin/bash" > /root/startup.sh && \
+    echo "vncserver :1 -geometry 1280x800 -depth 24 && tail -F /root/.vnc/*.log" >> /root/startup.sh && \
+    chmod +x /root/startup.sh
 
-# Expose the RDP port
-EXPOSE 3389
+# Expose the VNC port
+EXPOSE 5901
 
-# Set the entrypoint command to start the xrdp service
-ENTRYPOINT ["xrdp", "--nodaemon"]
-
-# Add a comment to document the purpose of this Dockerfile
-# This Dockerfile sets up an Ubuntu-based RDP server with ngrok for remote access
+# Set the entrypoint to start the VNC server
+ENTRYPOINT ["/root/startup.sh"]
